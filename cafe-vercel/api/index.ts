@@ -1,0 +1,282 @@
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import cors from "cors";
+import multer from "multer";
+import { eq, asc, desc } from "drizzle-orm";
+import { z } from "zod";
+import { v2 as cloudinary } from "cloudinary";
+
+// DB — imported at function scope to avoid cold-start issues
+import { db, menusTable, ordersTable } from "../db";
+
+// ─── Zod schemas (inline, adapted from api-zod) ────────────────────────────
+const ListMenusQueryParams = z.object({
+  category: z.string().optional(),
+  available: z
+    .string()
+    .transform((v) => v === "true")
+    .optional(),
+});
+
+const MenuItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullish(),
+  price: z.number(),
+  category: z.enum(["Makanan", "Minuman"]),
+  imageUrl: z.string().nullish(),
+  isAvailable: z.boolean(),
+  isDefault: z.boolean(),
+  orderIndex: z.number(),
+  createdAt: z.string(),
+});
+
+const CreateMenuBody = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  price: z.number().min(0),
+  category: z.enum(["Makanan", "Minuman"]),
+  imageUrl: z.string().optional(),
+  isAvailable: z.boolean().optional(),
+});
+
+const UpdateMenuParams = z.object({ id: z.coerce.number() });
+const UpdateMenuBody = z.object({
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  price: z.number().min(0).optional(),
+  category: z.enum(["Makanan", "Minuman"]).optional(),
+  imageUrl: z.string().optional(),
+  isAvailable: z.boolean().optional(),
+});
+
+const CreateOrderBody = z.object({
+  customerName: z.string().min(1),
+  customerPhone: z.string().min(1),
+  customerAddress: z.string().min(1),
+  items: z.string(),
+  totalPrice: z.number(),
+  finalPrice: z.number(),
+  voucherCode: z.string().optional(),
+  discountRate: z.number().optional(),
+  paymentMethod: z.string(),
+  notes: z.string().optional(),
+});
+
+const AdminLoginBody = z.object({ password: z.string().min(1) });
+
+// ─── Express app ────────────────────────────────────────────────────────────
+const app: Express = express();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Helper: format menu row
+function fmtMenu(m: Record<string, unknown>) {
+  return { ...m, createdAt: m.createdAt instanceof Date ? (m.createdAt as Date).toISOString() : m.createdAt };
+}
+
+// ─── Admin auth middleware for upload ───────────────────────────────────────
+function requireAdminToken(req: Request, res: Response, next: NextFunction): void {
+  const auth = req.headers["authorization"] || "";
+  const token = auth.replace("Bearer ", "").trim();
+  const adminPassword = process.env["ADMIN_PASSWORD"] || "";
+  if (!token || token !== adminPassword) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  next();
+}
+
+// ─── Health ────────────────────────────────────────────────────────────────
+app.get("/api/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
+// ─── Menus ─────────────────────────────────────────────────────────────────
+app.get("/api/menus/summary", async (_req, res) => {
+  const menus = await db.select().from(menusTable).orderBy(asc(menusTable.orderIndex));
+  res.json({
+    total: menus.length,
+    available: menus.filter((m) => m.isAvailable).length,
+    byCategory: {
+      Makanan: menus.filter((m) => m.category === "Makanan").length,
+      Minuman: menus.filter((m) => m.category === "Minuman").length,
+    },
+  });
+});
+
+app.get("/api/menus", async (req, res) => {
+  const query = ListMenusQueryParams.safeParse(req.query);
+  const menus = await db.select().from(menusTable).orderBy(asc(menusTable.orderIndex));
+  let filtered = menus as typeof menus;
+  if (query.success) {
+    if (query.data.category) filtered = filtered.filter((m) => m.category === query.data.category);
+    if (query.data.available !== undefined) filtered = filtered.filter((m) => m.isAvailable === query.data.available);
+  }
+  res.json(filtered.map(fmtMenu));
+});
+
+app.post("/api/menus", async (req, res): Promise<void> => {
+  const parsed = CreateMenuBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const count = await db.$count(menusTable);
+  const [menu] = await db
+    .insert(menusTable)
+    .values({ ...parsed.data, isDefault: false, orderIndex: count })
+    .returning();
+  res.status(201).json(fmtMenu(menu as unknown as Record<string, unknown>));
+});
+
+app.get("/api/menus/:id", async (req, res): Promise<void> => {
+  const params = UpdateMenuParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [menu] = await db.select().from(menusTable).where(eq(menusTable.id, params.data.id));
+  if (!menu) {
+    res.status(404).json({ error: "Menu not found" });
+    return;
+  }
+  res.json(fmtMenu(menu as unknown as Record<string, unknown>));
+});
+
+app.patch("/api/menus/:id", async (req, res): Promise<void> => {
+  const params = UpdateMenuParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = UpdateMenuBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [menu] = await db.update(menusTable).set(parsed.data).where(eq(menusTable.id, params.data.id)).returning();
+  if (!menu) {
+    res.status(404).json({ error: "Menu not found" });
+    return;
+  }
+  res.json(fmtMenu(menu as unknown as Record<string, unknown>));
+});
+
+app.delete("/api/menus/:id", async (req, res): Promise<void> => {
+  const params = UpdateMenuParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [deleted] = await db.delete(menusTable).where(eq(menusTable.id, params.data.id)).returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Menu not found" });
+    return;
+  }
+  res.json({ success: true });
+});
+
+// ─── Orders ────────────────────────────────────────────────────────────────
+app.get("/api/orders", async (_req, res) => {
+  const orders = await db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt));
+  res.json(orders.map(fmtMenu));
+});
+
+app.post("/api/orders", async (req, res): Promise<void> => {
+  const parsed = CreateOrderBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [order] = await db
+    .insert(ordersTable)
+    .values({ ...parsed.data, discountRate: parsed.data.discountRate ?? 0 })
+    .returning();
+  res.status(201).json(fmtMenu(order as unknown as Record<string, unknown>));
+});
+
+app.get("/api/orders/revenue", async (_req, res) => {
+  const orders = await db.select().from(ordersTable);
+  res.json({
+    totalRevenue: orders.reduce((s, o) => s + o.finalPrice, 0),
+    totalOrders: orders.length,
+    totalDiscount: orders.reduce((s, o) => s + (o.totalPrice - o.finalPrice), 0),
+    ordersWithVoucher: orders.filter((o) => o.voucherCode).length,
+  });
+});
+
+// ─── Admin ─────────────────────────────────────────────────────────────────
+app.post("/api/admin/login", (req, res): void => {
+  const parsed = AdminLoginBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const adminPassword = process.env["ADMIN_PASSWORD"];
+  if (!adminPassword) {
+    res.status(500).json({ error: "Server misconfiguration" });
+    return;
+  }
+  const isValid = parsed.data.password === adminPassword;
+  if (!isValid) {
+    res.status(401).json({ success: false, message: "Password salah" });
+    return;
+  }
+  res.json({ success: true, message: "Login berhasil" });
+});
+
+// ─── Storage / Image Upload (Cloudinary) ───────────────────────────────────
+/**
+ * POST /api/storage/upload
+ * Accepts multipart/form-data with field "file".
+ * Requires Authorization: Bearer <ADMIN_PASSWORD> header.
+ * Uploads image to Cloudinary and returns the public URL.
+ */
+app.post(
+  "/api/storage/upload",
+  requireAdminToken,
+  upload.single("file"),
+  async (req: Request & { file?: Express.Multer.File }, res: Response): Promise<void> => {
+    if (!req.file) {
+      res.status(400).json({ error: "No file uploaded" });
+      return;
+    }
+
+    const cloudName = process.env["CLOUDINARY_CLOUD_NAME"];
+    const apiKey = process.env["CLOUDINARY_API_KEY"];
+    const apiSecret = process.env["CLOUDINARY_API_SECRET"];
+    const folder = process.env["CLOUDINARY_UPLOAD_FOLDER"] || "cafe-menus";
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      res.status(500).json({
+        error: "Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.",
+      });
+      return;
+    }
+
+    cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret });
+
+    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder, resource_type: "image" },
+        (error, result) => {
+          if (error || !result) reject(error ?? new Error("Upload failed"));
+          else resolve(result as { secure_url: string });
+        }
+      );
+      stream.end(req.file!.buffer);
+    });
+
+    res.json({ url: result.secure_url });
+  }
+);
+
+// ─── 404 for unknown /api routes ───────────────────────────────────────────
+app.use("/api/*path", (_req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
+export default app;
