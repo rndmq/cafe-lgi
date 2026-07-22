@@ -9,6 +9,7 @@
 export * from './adminLoginInput';
 export * from './adminLoginResult';
 export * from './deleteResult';
+export * from './errorEnvelope';
 export * from './healthStatus';
 export * from './listMenusParams';
 export * from './menuInput';
@@ -22,3 +23,5 @@ export * from './menuUpdateCategory';
 export * from './order';
 export * from './orderInput';
 export * from './revenueSummary';
+export * from './uploadUrlRequest';
+export * from './uploadUrlResponse';
