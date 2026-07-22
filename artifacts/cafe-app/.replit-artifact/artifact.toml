@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Kafe App"
+version = "1.0.0"
+id = "artifacts/cafe-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26139
+
+[services.development]
+run = "pnpm --filter @workspace/cafe-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cafe-app", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/cafe-app/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26139"
+BASE_PATH = "/"
