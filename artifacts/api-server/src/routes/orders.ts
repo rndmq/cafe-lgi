@@ -12,7 +12,7 @@ const router: IRouter = Router();
 
 router.get("/orders", async (_req, res): Promise<void> => {
   const orders = await db.select().from(ordersTable).orderBy(desc(ordersTable.createdAt));
-  res.json(ListOrdersResponse.parse(orders));
+  res.json(ListOrdersResponse.parse(orders.map(o => ({ ...o, createdAt: o.createdAt.toISOString() }))));
 });
 
 router.post("/orders", async (req, res): Promise<void> => {
@@ -30,7 +30,7 @@ router.post("/orders", async (req, res): Promise<void> => {
     })
     .returning();
 
-  res.status(201).json(CreateOrderResponse.parse(order));
+  res.status(201).json(CreateOrderResponse.parse({ ...order, createdAt: order.createdAt.toISOString() }));
 });
 
 router.get("/orders/revenue", async (_req, res): Promise<void> => {

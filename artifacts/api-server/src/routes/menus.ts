@@ -47,7 +47,7 @@ router.get("/menus", async (req, res): Promise<void> => {
     }
   }
 
-  res.json(ListMenusResponse.parse(filtered));
+  res.json(ListMenusResponse.parse(filtered.map(m => ({ ...m, createdAt: m.createdAt.toISOString() }))));
 });
 
 router.post("/menus", async (req, res): Promise<void> => {
@@ -67,7 +67,7 @@ router.post("/menus", async (req, res): Promise<void> => {
     })
     .returning();
 
-  res.status(201).json(CreateMenuResponse.parse(menu));
+  res.status(201).json(CreateMenuResponse.parse({ ...menu, createdAt: menu.createdAt.toISOString() }));
 });
 
 router.get("/menus/:id", async (req, res): Promise<void> => {
@@ -84,7 +84,7 @@ router.get("/menus/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetMenuResponse.parse(menu));
+  res.json(GetMenuResponse.parse({ ...menu, createdAt: menu.createdAt.toISOString() }));
 });
 
 router.patch("/menus/:id", async (req, res): Promise<void> => {
@@ -111,7 +111,7 @@ router.patch("/menus/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(UpdateMenuResponse.parse(menu));
+  res.json(UpdateMenuResponse.parse({ ...menu, createdAt: menu.createdAt.toISOString() }));
 });
 
 router.delete("/menus/:id", async (req, res): Promise<void> => {
