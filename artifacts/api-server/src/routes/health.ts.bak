@@ -1,9 +1,11 @@
-import { Router, type IRouter } from "express";
+import { Router, Request, Response } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-const router: IRouter = Router();
+// 1. Biarkan TypeScript menginfer tipe Router secara otomatis
+const router = Router();
 
-router.get("/healthz", (_req, res) => {
+// 2. Beri tipe data eksplisit Request dan Response pada handler
+router.get("/healthz", (_req: Request, res: Response) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
   res.json(data);
 });

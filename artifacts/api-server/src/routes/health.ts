@@ -1,10 +1,9 @@
 import { Router, Request, Response } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-// 1. Biarkan TypeScript menginfer tipe Router secara otomatis
+// 🔴 Cukup gunakan Router() tanpa ': IRouter' agar kompatibel dengan Express 5
 const router = Router();
 
-// 2. Beri tipe data eksplisit Request dan Response pada handler
 router.get("/healthz", (_req: Request, res: Response) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
   res.json(data);
