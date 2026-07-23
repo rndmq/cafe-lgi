@@ -142,7 +142,6 @@ async function buildVercelOutput() {
   await esbuild({
     ...sharedEsbuildOptions,
     entryPoints: [path.resolve(artifactDir, "src/vercel-handler.ts")],
-    entryNames: "index",
     outdir: functionDir,
   });
 
@@ -151,7 +150,7 @@ async function buildVercelOutput() {
     JSON.stringify(
       {
         runtime: "nodejs22.x",
-        handler: "index.mjs",
+        handler: "vercel-handler.mjs",
         launcherType: "Nodejs",
         shouldAddHelpers: true,
         shouldAddSourcemapSupport: true,
