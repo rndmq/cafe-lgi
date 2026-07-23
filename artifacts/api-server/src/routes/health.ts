@@ -1,8 +1,7 @@
-import { Router, Request, Response } from "express";
+import { Router, type IRouter, Request, Response } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-// 🔴 Cukup gunakan Router() tanpa ': IRouter' agar kompatibel dengan Express 5
-const router = Router();
+const router: IRouter = Router();
 
 router.get("/healthz", (_req: Request, res: Response) => {
   const data = HealthCheckResponse.parse({ status: "ok" });

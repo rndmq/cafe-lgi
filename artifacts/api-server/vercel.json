@@ -1,0 +1,11 @@
+{
+  "buildCommand": "node ./build.mjs",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && pnpm install",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/index.mjs"
+    }
+  ]
+}
