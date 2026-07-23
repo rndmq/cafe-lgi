@@ -65,29 +65,35 @@ export class ObjectStorageService {
   }
 
   /**
-   * Verifies the file was successfully uploaded to the bucket
-   * before allowing the client to reference it in the database.
+   * TAMBAHAN: Verify file exists di bucket & get public URL
+   * Call ini dari client SETELAH upload sukses
    */
-  async verifyUpload(bucketPath: string): Promise<boolean> {
-    try {
-      const { data, error } = await this.bucket.list('uploads', {
-        limit: 100,
-        search: bucketPath.split('/').pop(), // cek by filename
-      });
+  async confirmUpload(bucketPath: string): Promise<{
+    objectPath: string;
+    publicUrl: string;
+  }> {
+    // Verify file actually exists
+    const { data, error } = await this.bucket.list('uploads/', {
+      limit: 100,
+    });
 
-      if (error || !data) {
-        return false;
-      }
-
-      // Cek apakah file dengan nama yang diminta ada di hasil list
-      const fileExists = data.some(file => 
-        file.name === bucketPath.split('/').pop()
-      );
-
-      return fileExists;
-    } catch {
-      return false;
+    if (error) {
+      throw new Error(`Failed to list uploads: ${error.message}`);
     }
+
+    const fileName = bucketPath.split('/').pop();
+    const fileExists = data?.some((file) => file.name === fileName);
+
+    if (!fileExists) {
+      throw new Error(
+        `File not found in bucket: ${bucketPath}. Upload may have failed.`,
+      );
+    }
+
+    const objectPath = `/objects/${bucketPath}`;
+    const publicUrl = this.getPublicUrl(objectPath);
+
+    return { objectPath, publicUrl };
   }
 
   getPublicUrl(objectPath: string): string {

@@ -82,38 +82,22 @@ export default function MenuForm() {
           }
         });
 
+        // 2. Upload file using the Supabase signed upload URL/token
+        //    (Supabase signed uploads must go through the SDK, not a raw PUT)
         const { bucketPath, token } = uploadRes as unknown as {
           bucketPath: string;
           token: string;
         };
-
-        // 2. Upload file ke Supabase bucket
         const { error: uploadError } = await supabase.storage
           .from(MENU_IMAGES_BUCKET)
           .uploadToSignedUrl(bucketPath, token, file);
 
         if (uploadError) {
-          throw new Error(`Upload gagal: ${uploadError.message}`);
+          throw uploadError;
         }
 
-        // 3. VERIFY ke server bahwa file sudah tersimpan
-        const token_admin = localStorage.getItem("adminToken");
-        const verifyRes = await fetch("/api/storage/uploads/verify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token_admin}`,
-          },
-          body: JSON.stringify({ bucketPath }),
-        });
-
-        if (!verifyRes.ok) {
-          const errData = await verifyRes.json();
-          throw new Error(errData.error || "Verifikasi upload gagal");
-        }
-
-        const verifyData = await verifyRes.json();
-        finalImageUrl = verifyData.objectPath;
+        // 3. Set image url
+        finalImageUrl = uploadRes.objectPath;
       }
 
       const menuData = {
@@ -139,13 +123,7 @@ export default function MenuForm() {
       setLocation("/admin/menus");
       
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Terjadi kesalahan";
-      console.error("Error:", err);
-      toast({ 
-        title: "Gagal menyimpan", 
-        description: errorMsg,
-        variant: "destructive" 
-      });
+      toast({ title: "Gagal menyimpan", variant: "destructive" });
     }
   };
 
