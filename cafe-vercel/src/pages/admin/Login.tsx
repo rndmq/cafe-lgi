@@ -19,11 +19,11 @@ export default function AdminLogin() {
     e.preventDefault();
     loginMutation.mutate({ data: { password } }, {
       onSuccess: (res) => {
-  if (res.success) {
-    localStorage.setItem("adminToken", password);   // <- ini yang diubah
-    setLocation("/admin");
-    toast({ title: "Login Berhasil" });
-  } else {
+        if (res.success) {
+          localStorage.setItem("adminToken", password);
+          setLocation("/admin");
+          toast({ title: "Login Berhasil" });
+        } else {
           toast({ title: "Login Gagal", description: "Password salah.", variant: "destructive" });
         }
       },

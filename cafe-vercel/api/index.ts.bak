@@ -3,7 +3,7 @@ import cors from "cors";
 import multer from "multer";
 import { eq, asc, desc } from "drizzle-orm";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
+import { v2 as cloudinary } from "cloudinary";
 
 // DB — imported at function scope to avoid cold-start issues
 import { db, menusTable, ordersTable } from "../db";
@@ -67,18 +67,6 @@ const AdminLoginBody = z.object({ password: z.string().min(1) });
 // ─── Express app ────────────────────────────────────────────────────────────
 const app: Express = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-// Supabase client using the service_role key — server-side only, bypasses RLS.
-// NEVER expose SUPABASE_SERVICE_ROLE_KEY to the frontend.
-const MENU_IMAGES_BUCKET = process.env["SUPABASE_STORAGE_BUCKET"] || "menu-images";
-function getSupabaseAdmin() {
-  const url = process.env["SUPABASE_URL"];
-  const serviceRoleKey = process.env["SUPABASE_SERVICE_ROLE_KEY"];
-  if (!url || !serviceRoleKey) return null;
-  return createClient(url, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 app.use(cors());
 app.use(express.json());
@@ -240,12 +228,12 @@ app.post("/api/admin/login", (req, res): void => {
   res.json({ success: true, message: "Login berhasil" });
 });
 
-// ─── Storage / Image Upload (Supabase Storage) ─────────────────────────────
+// ─── Storage / Image Upload (Cloudinary) ───────────────────────────────────
 /**
  * POST /api/storage/upload
  * Accepts multipart/form-data with field "file".
  * Requires Authorization: Bearer <ADMIN_PASSWORD> header.
- * Uploads image to the Supabase "menu-images" bucket (public) and returns its public URL.
+ * Uploads image to Cloudinary and returns the public URL.
  */
 app.post(
   "/api/storage/upload",
@@ -257,34 +245,32 @@ app.post(
       return;
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
-    if (!supabaseAdmin) {
+    const cloudName = process.env["CLOUDINARY_CLOUD_NAME"];
+    const apiKey = process.env["CLOUDINARY_API_KEY"];
+    const apiSecret = process.env["CLOUDINARY_API_SECRET"];
+    const folder = process.env["CLOUDINARY_UPLOAD_FOLDER"] || "cafe-menus";
+
+    if (!cloudName || !apiKey || !apiSecret) {
       res.status(500).json({
-        error: "Supabase storage not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+        error: "Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.",
       });
       return;
     }
 
-    const ext = (req.file.originalname.split(".").pop() || "bin").toLowerCase();
-    const objectPath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret });
 
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(MENU_IMAGES_BUCKET)
-      .upload(objectPath, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: false,
-      });
+    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder, resource_type: "image" },
+        (error, result) => {
+          if (error || !result) reject(error ?? new Error("Upload failed"));
+          else resolve(result as { secure_url: string });
+        }
+      );
+      stream.end(req.file!.buffer);
+    });
 
-    if (uploadError) {
-      res.status(500).json({ error: `Upload gagal: ${uploadError.message}` });
-      return;
-    }
-
-    const { data: publicUrlData } = supabaseAdmin.storage
-      .from(MENU_IMAGES_BUCKET)
-      .getPublicUrl(objectPath);
-
-    res.json({ url: publicUrlData.publicUrl });
+    res.json({ url: result.secure_url });
   }
 );
 
