@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import multer from "multer";
 import { eq, asc, desc } from "drizzle-orm";
@@ -87,18 +87,6 @@ app.use(express.urlencoded({ extended: true }));
 // Helper: format menu row
 function fmtMenu(m: Record<string, unknown>) {
   return { ...m, createdAt: m.createdAt instanceof Date ? (m.createdAt as Date).toISOString() : m.createdAt };
-}
-
-// ─── Admin auth middleware for upload ───────────────────────────────────────
-function requireAdminToken(req: Request, res: Response, next: NextFunction): void {
-  const auth = req.headers["authorization"] || "";
-  const token = auth.replace("Bearer ", "").trim();
-  const adminPassword = process.env["ADMIN_PASSWORD"] || "";
-  if (!token || token !== adminPassword) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  next();
 }
 
 // ─── Health ────────────────────────────────────────────────────────────────
@@ -249,7 +237,6 @@ app.post("/api/admin/login", (req, res): void => {
  */
 app.post(
   "/api/storage/upload",
-  requireAdminToken,
   upload.single("file"),
   async (req: Request & { file?: Express.Multer.File }, res: Response): Promise<void> => {
     if (!req.file) {

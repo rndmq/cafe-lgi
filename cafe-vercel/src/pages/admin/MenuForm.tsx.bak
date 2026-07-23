@@ -66,11 +66,13 @@ export default function MenuForm() {
   };
 
   const uploadImage = async (file: File): Promise<string> => {
+    const adminToken = localStorage.getItem("adminToken") || "";
     const formData = new FormData();
     formData.append("file", file);
 
     const res = await fetch("/api/storage/upload", {
       method: "POST",
+      headers: { Authorization: `Bearer ${adminToken}` },
       body: formData,
     });
 
