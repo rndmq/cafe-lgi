@@ -64,7 +64,7 @@ export default function Cart() {
       <h1 className="text-3xl font-bold tracking-tight mb-8">Keranjang Pesanan</h1>
       
       <div className="grid lg:grid-cols-3 gap-10">
-        {/* Cart Items Lihst */}
+        {/* Cart Items List */}
         <div className="lg:col-span-2 space-y-4">
           {items.map((item) => (
             <Card key={item.menuId} className="overflow-hidden bg-white">
