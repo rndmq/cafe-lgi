@@ -1,0 +1,15 @@
+{
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist/public",
+  "installCommand": "cd ../.. && pnpm install",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://cafe-lgi.vercel.app/api/$1"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
