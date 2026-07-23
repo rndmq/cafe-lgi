@@ -17,9 +17,16 @@ const objectStorageService = new ObjectStorageService();
 function hasAuthenticatedSession(
   req: Request,
 ): req is Request & { isAuthenticated: () => boolean } {
-  (req as any).isAuthenticated = () => true;
-  return true;
+  if (
+    !('isAuthenticated' in req) ||
+    typeof req.isAuthenticated !== 'function'
+  ) {
+    return false;
+  }
+
+  return req.isAuthenticated();
 }
+
 /**
  * POST /storage/uploads/request-url
  *
