@@ -10,21 +10,24 @@ import {
   ObjectNotFoundError,
   ObjectStorageService,
 } from '../lib/objectStorage';
+import { verifyAdminToken } from '../lib/adminToken';
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
-function hasAuthenticatedSession(
-  req: Request,
-): req is Request & { isAuthenticated: () => boolean } {
-  if (
-    !('isAuthenticated' in req) ||
-    typeof req.isAuthenticated !== 'function'
-  ) {
-    return false;
-  }
+/**
+ * Checks for a valid `Authorization: Bearer <token>` header, where the
+ * token was issued by POST /admin/login. Replaces an earlier Passport-style
+ * `req.isAuthenticated()` check that never worked because this app has no
+ * Passport/session middleware set up — every request was silently 401ing
+ * regardless of login state.
+ */
+function hasAuthenticatedSession(req: Request): boolean {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return false;
 
-  return req.isAuthenticated();
+  const token = header.slice('Bearer '.length);
+  return verifyAdminToken(token);
 }
 
 /**

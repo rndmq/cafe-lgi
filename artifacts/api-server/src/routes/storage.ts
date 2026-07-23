@@ -56,17 +56,15 @@ router.post(
     try {
       const { name, size, contentType } = parsed.data;
 
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      const objectPath =
-        objectStorageService.normalizeObjectEntityPath(uploadURL);
+      const upload = await objectStorageService.getObjectEntityUploadURL();
 
-      res.json(
-        RequestUploadUrlResponse.parse({
-          uploadURL,
-          objectPath,
-          metadata: { name, size, contentType },
-        }),
-      );
+res.json(
+  RequestUploadUrlResponse.parse({
+    uploadURL: upload.uploadURL,
+    objectPath: upload.objectPath,
+    metadata: { name, size, contentType },
+  }),
+);
     } catch (error) {
       req.log.error({ err: error }, 'Error generating upload URL');
       res.status(500).json({ error: 'Failed to generate upload URL' });
