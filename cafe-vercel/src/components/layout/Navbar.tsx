@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Coffee, ShoppingBag, LayoutDashboard, Utensils, ClipboardList, LogOut } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
+import { CreditsEasterEgg, useCreditsEasterEgg } from "@/components/layout/CreditsEasterEgg";
 
 export function Navbar() {
   const [location, setLocation] = useLocation();
@@ -10,6 +11,7 @@ export function Navbar() {
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const isAdmin = location.startsWith("/admin");
   const isAuthenticated = !!localStorage.getItem("adminToken");
+  const { open: creditsOpen, setOpen: setCreditsOpen, registerClick } = useCreditsEasterEgg();
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
@@ -19,10 +21,15 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-90 transition-opacity">
+        <Link
+          href="/"
+          onClick={registerClick}
+          className="flex items-center gap-2 text-primary hover:opacity-90 transition-opacity select-none"
+        >
           <Coffee className="h-6 w-6" strokeWidth={2.5} />
           <span className="font-bold text-xl tracking-tight">Lubertu</span>
         </Link>
+        <CreditsEasterEgg open={creditsOpen} onClose={() => setCreditsOpen(false)} />
 
         {isAdmin ? (
           <nav className="flex items-center gap-4">
