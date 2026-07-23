@@ -15,13 +15,6 @@ import { verifyAdminToken } from '../lib/adminToken';
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
 
-/**
- * Checks for a valid `Authorization: Bearer <token>` header, where the
- * token was issued by POST /admin/login. Replaces an earlier Passport-style
- * `req.isAuthenticated()` check that never worked because this app has no
- * Passport/session middleware set up — every request was silently 401ing
- * regardless of login state.
- */
 function hasAuthenticatedSession(req: Request): boolean {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return false;
@@ -34,16 +27,12 @@ function hasAuthenticatedSession(req: Request): boolean {
  * POST /storage/uploads/request-url
  *
  * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
- * Requires auth middleware so public callers cannot mint write-capable URLs.
  */
 router.post(
   '/storage/uploads/request-url',
   async (req: Request, res: Response) => {
     if (!hasAuthenticatedSession(req)) {
       res.status(401).json({ error: 'Unauthorized' });
-
       return;
     }
 
@@ -58,13 +47,15 @@ router.post(
 
       const upload = await objectStorageService.getObjectEntityUploadURL();
 
-res.json(
-  RequestUploadUrlResponse.parse({
-    uploadURL: upload.uploadURL,
-    objectPath: upload.objectPath,
-    metadata: { name, size, contentType },
-  }),
-);
+      res.json(
+        RequestUploadUrlResponse.parse({
+          uploadURL: upload.uploadURL,
+          objectPath: upload.objectPath,
+          bucketPath: upload.bucketPath,
+          token: upload.token,
+          metadata: { name, size, contentType },
+        }),
+      );
     } catch (error) {
       req.log.error({ err: error }, 'Error generating upload URL');
       res.status(500).json({ error: 'Failed to generate upload URL' });
@@ -73,11 +64,53 @@ res.json(
 );
 
 /**
+ * POST /storage/uploads/verify
+ *
+ * Verify bahwa file sudah berhasil di-upload ke bucket.
+ * Client HARUS call endpoint ini setelah upload sukses sebelum
+ * menyimpan ke database.
+ */
+router.post(
+  '/storage/uploads/verify',
+  async (req: Request, res: Response) => {
+    if (!hasAuthenticatedSession(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { bucketPath } = req.body;
+    if (!bucketPath) {
+      res.status(400).json({ error: 'Missing bucketPath' });
+      return;
+    }
+
+    try {
+      const exists = await objectStorageService.verifyUpload(bucketPath);
+
+      if (!exists) {
+        res.status(404).json({ error: 'File not found in bucket' });
+        return;
+      }
+
+      const objectPath = `/objects/${bucketPath}`;
+      const publicUrl = objectStorageService.getPublicUrl(objectPath);
+
+      res.json({
+        success: true,
+        objectPath,
+        publicUrl,
+      });
+    } catch (error) {
+      req.log.error({ err: error }, 'Error verifying upload');
+      res.status(500).json({ error: 'Failed to verify upload' });
+    }
+  },
+);
+
+/**
  * GET /storage/public-objects/*
  *
  * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
- * These are unconditionally public — no authentication or ACL checks.
- * IMPORTANT: Always provide this endpoint when object storage is set up.
  */
 router.get(
   '/storage/public-objects/*filePath',
@@ -115,8 +148,6 @@ router.get(
  * GET /storage/objects/*
  *
  * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
  */
 router.get('/storage/objects/*path', async (req: Request, res: Response) => {
   try {
@@ -125,21 +156,6 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile =
       await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
 
     const response = await objectStorageService.downloadObject(objectFile);
 

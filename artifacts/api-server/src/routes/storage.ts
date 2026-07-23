@@ -154,10 +154,9 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join('/') : raw;
     const objectPath = `/objects/${wildcardPath}`;
-    const objectFile =
-      await objectStorageService.getObjectEntityFile(objectPath);
 
-    const response = await objectStorageService.downloadObject(objectFile);
+    // 👇 Langsung pakai objectPath, jangan pakai getObjectEntityFile()
+    const response = await objectStorageService.downloadObject(objectPath);
 
     res.status(response.status);
     response.headers.forEach((value, key) => res.setHeader(key, value));
@@ -180,5 +179,4 @@ router.get('/storage/objects/*path', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to serve object' });
   }
 });
-
 export default router;
