@@ -235,15 +235,9 @@ export const RequestUploadUrlBody = zod.object({
 
 export const RequestUploadUrlResponse = zod.object({
   "uploadURL": zod.string(),
-  "objectPath": zod.string(),
-  "bucketPath": zod.string(),
-  "token": zod.string(),
-  "metadata": zod.object({
-    "name": zod.string(),
-    "size": zod.number(),
-    "contentType": zod.string()
-  })
+  "objectPath": zod.string()
 })
+
 
 /**
  * @summary Serve a public asset
