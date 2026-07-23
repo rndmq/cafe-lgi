@@ -238,20 +238,6 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
-
-  /*
-   * Radix UI (via react-remove-scroll) locks body scroll whenever a
-   * Select/Dialog/Popover opens, by setting `overflow: hidden` and a
-   * `margin-right` on <body> equal to the scrollbar width it just
-   * removed. This is meant to prevent the page from shifting — but it
-   * backfires for any `position: sticky`/`fixed` element (like our
-   * Navbar), which isn't inside the margin-affected flow and instead
-   * visually shrinks/shifts relative to the rest of the page.
-   * See: https://github.com/radix-ui/primitives/discussions/1100
-   */
-  body[data-scroll-locked] {
-    margin-right: 0 !important;
-  }
 }
 
 @layer utilities {
