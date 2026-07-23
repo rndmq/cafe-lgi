@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, UploadCloud } from "lucide-react";
+import { supabase, MENU_IMAGES_BUCKET } from "@/lib/supabaseClient";
 
 export default function MenuForm() {
   const [, setLocation] = useLocation();
@@ -81,12 +82,19 @@ export default function MenuForm() {
           }
         });
 
-        // 2. Put file to URL
-        await fetch(uploadRes.uploadURL, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file
-        });
+        // 2. Upload file using the Supabase signed upload URL/token
+        //    (Supabase signed uploads must go through the SDK, not a raw PUT)
+        const { bucketPath, token } = uploadRes as unknown as {
+          bucketPath: string;
+          token: string;
+        };
+        const { error: uploadError } = await supabase.storage
+          .from(MENU_IMAGES_BUCKET)
+          .uploadToSignedUrl(bucketPath, token, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
 
         // 3. Set image url
         finalImageUrl = uploadRes.objectPath;
