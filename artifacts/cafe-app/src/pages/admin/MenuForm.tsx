@@ -65,8 +65,6 @@ export default function MenuForm() {
     }
   };
 
-  // ... (kode sebelumnya sama)
-
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!name || !price) return;
@@ -84,21 +82,22 @@ const handleSubmit = async (e: React.FormEvent) => {
         }
       });
 
-      const { bucketPath, token } = uploadRes as unknown as {
+      const { uploadURL, bucketPath } = uploadRes as unknown as {
+        uploadURL: string;
         bucketPath: string;
-        token: string;
       };
 
-      // 2. Upload file ke Supabase bucket
-      // PENTING: bucketPath adalah relative path dari bucket root (misal: "uploads/uuid")
-      const { error: uploadError } = await supabase.storage
-        .from(MENU_IMAGES_BUCKET)
-        .uploadToSignedUrl(bucketPath, token, file, {
-          alreadyEncoded: false,
-        });
+      // 2. Upload file ke Supabase bucket dengan raw PUT
+      const uploadResponse = await fetch(uploadURL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+        body: file,
+      });
 
-      if (uploadError) {
-        throw new Error(`Upload gagal: ${uploadError.message}`);
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload gagal: ${uploadResponse.statusText}`);
       }
 
       // 3. VERIFY ke server bahwa file sudah tersimpan
@@ -145,7 +144,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : "Terjadi kesalahan";
-    console.error("Error:", err);
+    console.error("Error details:", err);
     toast({ 
       title: "Gagal menyimpan", 
       description: errorMsg,
