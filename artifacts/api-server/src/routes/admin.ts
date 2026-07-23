@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { AdminLoginBody, AdminLoginResponse } from "@workspace/api-zod";
+import { issueAdminToken } from "../lib/adminToken";
 
 const router: IRouter = Router();
 
@@ -24,7 +25,14 @@ router.post("/admin/login", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(AdminLoginResponse.parse({ success: true, message: "Login berhasil" }));
+  const token = issueAdminToken();
+
+  res.json({
+    ...AdminLoginResponse.parse({ success: true, message: "Login berhasil" }),
+    // Extra field (not in the shared zod schema yet) — the frontend stores
+    // this as `adminToken` and sends it back as `Authorization: Bearer <token>`.
+    token,
+  });
 });
 
 export default router;

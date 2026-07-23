@@ -20,7 +20,10 @@ export default function AdminLogin() {
     loginMutation.mutate({ data: { password } }, {
       onSuccess: (res) => {
         if (res.success) {
-          localStorage.setItem("adminToken", "authenticated");
+          // `token` isn't in the shared AdminLoginResponse zod type yet, so
+          // it comes through as an extra untyped field on the response.
+          const token = (res as { token?: string }).token;
+          if (token) localStorage.setItem("adminToken", token);
           setLocation("/admin");
           toast({ title: "Login Berhasil" });
         } else {
