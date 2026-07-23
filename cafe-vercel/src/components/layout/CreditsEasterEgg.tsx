@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Sparkles } from "lucide-react";
 
-const CREDITS = ["Nesa", "Naza", "Shisi", "Pandu", "Rasya", "Kia", "Nazwa"];
+const CREDITS = ["Naza", "Shisi", "Pandu", "Rasya", "Kia", "Nazwa"];
 
 export function useCreditsEasterEgg() {
   const [clickCount, setClickCount] = useState(0);
