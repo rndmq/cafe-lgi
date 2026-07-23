@@ -21,7 +21,7 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-90 transition-opacity">
           <Coffee className="h-6 w-6" strokeWidth={2.5} />
-          <span className="font-bold text-xl tracking-tight">Kenangan</span>
+          <span className="font-bold text-xl tracking-tight">Lubertu</span>
         </Link>
 
         {isAdmin ? (
