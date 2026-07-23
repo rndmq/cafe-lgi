@@ -73,6 +73,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   try {
     if (file) {
+    
       // 1. Request upload URL
       const uploadRes = await uploadMutation.mutateAsync({
         data: {
@@ -86,7 +87,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         uploadURL: string;
         bucketPath: string;
       };
-
+const { uploadURL, bucketPath } = uploadRes as any;
       // 2. Upload file ke Supabase bucket dengan raw PUT
       const uploadResponse = await fetch(uploadURL, {
         method: 'PUT',
