@@ -223,10 +223,10 @@ const handleSubmit = async (e: React.FormEvent) => {
               <Label htmlFor="available" className="cursor-pointer">Tersedia untuk dipesan</Label>
             </div>
 
-            <Button type="submit" className="w-full h-12 mt-6" disabled={isSaving}>
-  {isSaving && <Loader2 className="w-5 h-5 animate-spin mr-2" />}
-  {isEditing ? "Simpan Perubahan" : "Tambahkan Menu"}
-</Button>
+            <Button type="submit" className="w-full h-12 mt-6" disabled={isPending}>
+              {isPending && <Loader2 className="w-5 h-5 animate-spin mr-2" />}
+              {isEditing ? "Simpan Perubahan" : "Tambahkan Menu"}
+            </Button>
           </form>
         </CardContent>
       </Card>
