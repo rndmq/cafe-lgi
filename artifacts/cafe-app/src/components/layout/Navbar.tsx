@@ -19,6 +19,7 @@ export function Navbar() {
   };
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link
@@ -29,7 +30,6 @@ export function Navbar() {
           <Coffee className="h-6 w-6" strokeWidth={2.5} />
           <span className="font-bold text-lg sm:text-xl tracking-tight">Lubertu</span>
         </Link>
-        <CreditsEasterEgg open={creditsOpen} onClose={() => setCreditsOpen(false)} />
 
         {isAdmin ? (
           <nav className="flex items-center gap-1 sm:gap-4 overflow-x-auto">
@@ -87,5 +87,7 @@ export function Navbar() {
         )}
       </div>
     </header>
+    <CreditsEasterEgg open={creditsOpen} onClose={() => setCreditsOpen(false)} />
+    </>
   );
 }

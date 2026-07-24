@@ -40,19 +40,17 @@ export function CreditsEasterEgg({ open, onClose }: { open: boolean; onClose: ()
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
-          <div className="fixed inset-0 z-[101] flex items-end sm:items-center justify-center pointer-events-none">
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
-              className="pointer-events-auto w-full sm:w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl px-6 pt-6 pb-10 sm:pb-8 max-h-[80vh] overflow-y-auto sm:mx-4"
-              initial={{ y: "100%", opacity: 1 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "100%", opacity: 1 }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              className="pointer-events-auto w-full max-w-md bg-white rounded-3xl shadow-2xl px-6 pt-6 pb-8 max-h-[80vh] overflow-y-auto"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
             >
-              <div className="mx-auto w-12 h-1.5 rounded-full bg-muted mb-4 sm:hidden" />
-
               <button
                 onClick={onClose}
-                className="absolute top-5 right-5 sm:top-6 sm:right-6 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute top-5 right-5 text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Tutup"
               >
                 <X className="h-5 w-5" />
